@@ -1,6 +1,8 @@
+import { marketingRedirect } from './publicRouting'
+import DemoWorkspace from './DemoWorkspace'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, Check, ClipboardList, Truck, Wallet } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import Landing, { PublicBrand } from './Landing'
 import { updatePageMeta } from './siteMeta'
 
@@ -11,26 +13,29 @@ function initialConfig(): Config {
 }
 export default function PublicSite({application}:{application:ReactNode}) {
   const [config,setConfig]=useState(initialConfig)
+  const [configReady,setConfigReady]=useState(()=>!!document.getElementById('public-config'))
   const [path,setPath]=useState(window.location.pathname)
   function navigate(next:string) { window.history.pushState({},'',next);setPath(next);window.scrollTo({top:0,behavior:'instant'}) }
   useEffect(()=>{
     const pop=()=>setPath(window.location.pathname)
     window.addEventListener('popstate',pop)
     const controller=new AbortController()
-    if(!document.getElementById('public-config')) fetch('/api/public-config',{signal:controller.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(setConfig).catch(()=>{})
+    if(!document.getElementById('public-config')) fetch('/api/public-config',{signal:controller.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(value=>{if(!controller.signal.aborted)setConfig(value)}).catch(()=>{}).finally(()=>{if(!controller.signal.aborted)setConfigReady(true)})
     return()=>{controller.abort();window.removeEventListener('popstate',pop)}
   },[])
   useEffect(()=>{
-    if(config.mode==='marketing' && ['/kayit','/giris','/uygulama'].includes(path)) {
-      const next=path==='/uygulama'?'/demo':'/demo-talebi'
+    const next=marketingRedirect(path,config.mode,configReady)
+    if(next) {
       window.history.replaceState({},'',next);setPath(next)
     }
-    if(config.mode==='marketing')updatePageMeta(path)
-  },[path,config.mode])
+    if(configReady && config.mode==='marketing')updatePageMeta(path)
+  },[path,config.mode,configReady])
+  if(!configReady && path!=='/')return <div className="loading-screen" role="status"><div className="spinner"/><strong>FasonCep açılıyor…</strong></div>
   if(config.mode==='application')return application
+  if(path==='/demo')return <DemoWorkspace navigate={navigate}/>
   if(path==='/')return <Landing navigate={navigate} signedIn={false}/>
   return <div className="public-shell"><header className="public-shell-header landing-container"><PublicBrand onClick={()=>navigate('/')}/><button className="button secondary" onClick={()=>navigate('/')}><ArrowLeft size={16}/> Ana sayfa</button></header><main className="landing-container public-shell-main">
-    {path==='/demo'?<SampleDemo navigate={navigate}/>:path==='/aydinlatma'?<Privacy config={config}/>:<RequestForm config={config} navigate={navigate}/>}
+    {path==='/aydinlatma'?<Privacy config={config}/>:<RequestForm config={config} navigate={navigate}/>}
   </main><footer className="public-footer landing-container"><span>© {new Date().getFullYear()} FasonCep</span><button className="text-button" onClick={()=>navigate('/aydinlatma')}>Demo talebi aydınlatma metni</button></footer></div>
 }
 
@@ -67,22 +72,12 @@ function Privacy({config}:{config:Config}) {
   return <article className="public-notice"><span className="eyebrow">DEMO TALEBİ</span><h1>Kişisel verilerin hakkında.</h1>{!config.accepting_requests?<p>Demo talep formu henüz başvuru kabul etmiyor. Başvurular açılmadan önce veri sorumlusu ve iletişim bilgileriyle birlikte aydınlatma metni burada paylaşılacak.</p>:<>
     <h2>Veri sorumlusu</h2><p>{config.operator_name}. Başvuru ve iletişim adresi: <a href={`mailto:${config.contact_email}`}>{config.contact_email}</a>.</p>
     <h2>Hangi bilgiler, hangi amaçla?</h2><p>Formda verdiğin ad soyad, atölye adı ve e-posta adresi; demo talebini kaydetmek, değerlendirmek ve talebine yanıt vermek için elektronik ortamda toplanır. Hesap açılmaz; şifre veya müşteri/çalışan kaydı istenmez.</p>
-    <h2>Hukuki sebep ve aktarım</h2><p>Talebin kapsamındaki işleme, 6698 sayılı Kanun’un 5/2-c maddesindeki sözleşmenin kurulmasıyla doğrudan ilgili olma şartına dayanır. Veriler, bu amaçla kullanılan barındırma ve yedekleme hizmeti sağlayıcılarına hizmetin gerektirdiği ölçüde, yetkili kamu kurumlarına ise yasal yükümlülük halinde aktarılabilir.</p>
+    <h2>Hukuki sebep ve aktarım</h2><p>Talebin kapsamındaki işleme, 6698 sayılı Kanun’un 5/2-c maddesindeki sözleşmenin kurulmasıyla doğrudan ilgili olma şartına dayanır. Veriler, bu amaçla kullanılan barındırma, e-posta ve yedekleme hizmeti sağlayıcılarına hizmetin gerektirdiği ölçüde, yetkili kamu kurumlarına ise yasal yükümlülük halinde aktarılabilir.</p>
     <h2>Saklama ve hakların</h2><p>Demo talebi kayıtları ana veritabanında en fazla {config.retention_days} gün saklanır. Kanun’un 11. maddesi kapsamında işlenip işlenmediğini öğrenme, bilgi isteme, amaç ve alıcıları öğrenme, düzeltme, şartları varsa silme/yok etme ve bunların alıcılara bildirilmesini isteme, yalnızca otomatik analizle aleyhine sonuç doğmasına itiraz ve kanuna aykırı işleme nedeniyle zararın giderilmesini talep etme hakların bulunur. Taleplerini Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ’e uygun şekilde yukarıdaki iletişim adresinden iletebilirsin.</p>
     <p>Bu form pazarlama bülteni aboneliği oluşturmaz. Metin sürümü: demo-v1.</p>
   </>}</article>
 }
 
-const samples=[{id:'SP-1042',model:'Basic tişört',customer:'Örnek Moda',quantity:600,produced:420,delivered:300,due:'Bugün',status:'Üretimde',balance:18000},{id:'SP-1043',model:'Keten gömlek',customer:'Örnek Giyim',quantity:240,produced:240,delivered:120,due:'Bu hafta',status:'Teslime hazır',balance:12000},{id:'SP-1044',model:'Pamuklu tunik',customer:'Örnek Tekstil',quantity:180,produced:180,delivered:180,due:'Teslim edildi',status:'Tamamlandı',balance:0}]
 export function SampleDemo({navigate}:{navigate:(path:string)=>void}) {
-  const [tab,setTab]=useState<'orders'|'deliveries'|'balances'>('orders')
-  const [selected,setSelected]=useState(samples[0].id)
-  const order=samples.find(item=>item.id===selected)!
-  const money=(amount:number)=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:0}).format(amount)
-  return <section><div className="section-header"><div><span className="eyebrow">ÖRNEK ATÖLYE · DEMO</span><h1>İş takibine yakından bak.</h1><p>Tüm isimler ve tutarlar örnektir. Bu görünüm kayıt oluşturmaz; gerçek müşteri veya çalışan bilgisi girme.</p></div><button className="button primary" onClick={()=>navigate('/demo-talebi')}>Hesap aç<ArrowRight size={17}/></button></div>
-    <div className="sample-metrics">{[{icon:ClipboardList,title:'Bugün teslim',value:'1 sipariş'},{icon:Truck,title:'Teslim edilecek',value:'420 adet'},{icon:Wallet,title:'Açık alacak',value:money(30000)}].map(item=><article key={item.title}><item.icon size={22}/><span>{item.title}</span><strong>{item.value}</strong></article>)}</div>
-    <div className="sample-tabs" role="tablist" aria-label="Demo ekranları">{([{id:'orders',label:'Siparişler'},{id:'deliveries',label:'Teslimatlar'},{id:'balances',label:'Alacaklar'}] as const).map(item=><button key={item.id} id={`tab-${item.id}`} role="tab" aria-selected={tab===item.id} aria-controls="sample-panel" className={tab===item.id?'button primary':'button secondary'} onClick={()=>setTab(item.id)}>{item.label}</button>)}</div>
-    <div id="sample-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="sample-grid">{samples.map(item=><article className="sample-order" key={item.id}><span className="eyebrow">{item.id}</span><h2>{tab==='balances'?item.customer:item.model}</h2><p>{tab==='balances'?item.model:item.customer}</p>{tab==='orders'?<><span className="sample-status">{item.status}</span><dl><div><dt>Sipariş</dt><dd>{item.quantity} adet</dd></div><div><dt>Üretilecek</dt><dd>{item.quantity-item.produced} adet</dd></div><div><dt>Teslim</dt><dd>{item.due}</dd></div></dl><button className="button secondary" onClick={()=>setSelected(item.id)} aria-pressed={selected===item.id}>Sipariş detayını gör</button></>:tab==='deliveries'?<dl><div><dt>Üretilen</dt><dd>{item.produced} adet</dd></div><div><dt>Teslim edilen</dt><dd>{item.delivered} adet</dd></div><div><dt>Hazır bekleyen</dt><dd>{item.produced-item.delivered} adet</dd></div></dl>:<dl><div><dt>Açık alacak</dt><dd>{money(item.balance)}</dd></div><div><dt>Durum</dt><dd>{item.balance?'Tahsilat bekleniyor':'Hesap kapandı'}</dd></div></dl>}</article>)}</div>
-    {tab==='orders'&&<article className="sample-detail"><span className="eyebrow">SEÇİLİ SİPARİŞ · ÖRNEK KAYIT</span><h2>{order.model} · {order.id}</h2><p>{order.customer} için {order.quantity} adet. Üretim: {order.produced} adet; teslimat: {order.delivered} adet.</p><p>Not: Etiket ve paket kontrolü teslimattan önce yapılacak.</p><p>Örnek renk/beden dağılımı: Lacivert / M — {order.quantity} adet.</p><p>Üretim, teslimat ve tahsilat girişi bu tanıtım demosunda kapalıdır.</p></article>}
-  </section>
+  return <DemoWorkspace navigate={navigate}/>
 }

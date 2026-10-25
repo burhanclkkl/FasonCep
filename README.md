@@ -84,3 +84,5 @@ npm run build
 Depo, boş veriyle GitHub'a aktarılacak şekilde hazırlanmıştır. Docker/HTTPS yapılandırması sağlanmıştır; bu durum gerçek alan adı üzerinde dağıtım yapıldığı veya operasyonel güvenliğin tamamen doğrulandığı anlamına gelmez. Yayından önce [kontrol listesini](docs/RELEASE_CHECKLIST.md) tamamlayın. GitHub'a yükleme ve canlıya dağıtım bu çalışma kapsamında yapılmadı.
 
 SEO, canonical/sitemap ayarları ve yayın sonrası doğrulama: [docs/SEO.md](docs/SEO.md).
+
+Demo talebi SMTP bildirim kurulumu: [docs/EMAIL.md](docs/EMAIL.md).

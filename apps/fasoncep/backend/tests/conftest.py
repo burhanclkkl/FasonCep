@@ -4,3 +4,4 @@ import pytest
 def existing_application_tests(monkeypatch):
     # Existing CRUD/auth tests exercise the separately enabled application mode.
     monkeypatch.setenv('FASONCEP_SITE_MODE', 'application')
+    monkeypatch.setenv('FASONCEP_MAIL_ENABLED', '0')

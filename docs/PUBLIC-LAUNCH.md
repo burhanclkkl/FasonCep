@@ -6,7 +6,7 @@ Varsayılan `FASONCEP_SITE_MODE=marketing` modunda yalnızca landing, örnek dem
 
 Backend, marketing modunda `/api/health`, `/api/public-config` ve `/api/demo-requests` dışındaki tüm `/api/` yollarını 404 ile kapatır. Oturum çerezi olsa bile gerçek atölye, müşteri, sipariş, tahsilat ve dışa aktarma uç noktaları erişilemez. Mevcut veriler silinmez. `application` modu eski uygulamayı ve kayıt API'sini tekrar açar; ilk halka açık yayında bu modu kullanmayın. Bu ayrım HTTP API sınırıdır; uygulama kaynak kodu aynı frontend paketinde bulunur.
 
-`/demo`, yalnızca frontend içindeki açıkça örnek olarak etiketlenmiş sabit kayıtları gösterir. Sipariş, teslimat ve alacak sekmeleri ile sipariş detayı incelenebilir. Ekleme, düzenleme, silme veya API'den iş kaydı yükleme işlemi yoktur. DB'ye demo veri yazılmaz. Gerçek bilgiler demo alanına girilemez.
+`/demo`, yalnızca frontend içindeki açıkça örnek olarak etiketlenmiş sabit kayıtları gösterir. Gerçek uygulamanın Operations ve OrderDetail bileşenleri kullanılır: dashboard, müşteriler, siparişler, üretim, teslimatlar, cari/tahsilat, teslim takvimi, arama, filtreler, sayfalama ve sipariş detayı incelenebilir. İki örnek atölyenin kayıtları ayrıdır; tarihler açılıştaki İstanbul gününe göre oluşturulur. Ekleme, düzenleme, silme veya API'den iş kaydı yükleme işlemi yoktur. DB'ye demo veri yazılmaz. Gerçek bilgiler demo alanına girilemez.
 
 ## E-posta henüz belli değilken
 
@@ -34,7 +34,7 @@ Ad soyad (2–80), atölye adı (2–120) ve e-posta (en fazla 254 karakter) do�
 
 Başvurular SQLite `demo_requests` tablosuna, `demo-v1` aydınlatma sürümü ve tarih ile yazılır. Bu kayıt açık rıza beyanı değildir. Ana veritabanındaki 90 günü aşan başvurular başlangıçta, yeni başvurularda ve uygulama çalışırken saatlik temizlenir. Genel API üzerinden başvuru listeleme veya indirme yoktur; yetkili işletmeci veritabanı üzerinden erişir.
 
-Başarılı işlem mesajı: “Talebin alındı. Demo için seninle iletişime geçeceğiz.” E-posta gönderimi veya bildirim servisi bu aşamada bağlı değildir. İletişim e-postası yalnızca iletişim ve aydınlatma bilgisidir; bildirim alıcısı yapılandırması değildir. Başvuruların takibi için e-posta bildirimi veya yetkili yönetim ekranı sonraki ayrı adımdır.
+Başarılı işlem mesajı: “Talebin alındı. Demo için seninle iletişime geçeceğiz.” SMTP bildirim altyapısı mevcuttur; gerçek SMTP ayarları ve etkinleştirme olmadan e-posta gönderilmez. İletişim e-postası bildirim alıcısından ayrıdır. Kurulum: [EMAIL.md](EMAIL.md).
 
 ## Doğrulama
 

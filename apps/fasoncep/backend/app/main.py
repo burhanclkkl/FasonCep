@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import asyncio
+import logging
 from contextlib import suppress
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .settings import is_production, allowed_hosts, frontend_directory, site_mode
 from .seo import router as seo_router, render_page, public_url
+from .mail_notifications import settings as mail_settings, deliver_one
 from .demo_requests import router as demo_router, initialize_requests, cleanup_requests
 from fastapi.exceptions import RequestValidationError
 from urllib.parse import urlsplit
@@ -27,14 +29,31 @@ async def lifespan(_: FastAPI):
     async def purge_loop():
         while True:
             await asyncio.sleep(3600)
-            await asyncio.to_thread(cleanup_requests)
+            try:
+                await asyncio.to_thread(cleanup_requests)
+            except Exception:
+                logging.getLogger(__name__).error('Demo request cleanup failed; retrying next cycle.')
+    mail_settings()  # Enabled but incomplete SMTP configuration fails at startup.
+    async def mail_loop():
+        while True:
+            await asyncio.sleep(5)
+            try:
+                # Bound each batch so incoming requests and shutdown remain responsive.
+                for _ in range(10):
+                    if not await asyncio.to_thread(deliver_one):
+                        break
+            except Exception:
+                logging.getLogger(__name__).error('Demo notification worker failed; retrying next cycle.')
     cleanup_task = asyncio.create_task(purge_loop())
+    mail_task = asyncio.create_task(mail_loop())
     try:
         yield
     finally:
         cleanup_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await cleanup_task
+        mail_task.cancel()
+        for task in (cleanup_task,mail_task):
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 app = FastAPI(

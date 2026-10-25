@@ -4,6 +4,14 @@ services:
     restart: unless-stopped
     environment:
       FASONCEP_ENV: production
+      FASONCEP_MAIL_ENABLED: ${FASONCEP_MAIL_ENABLED:-0}
+      FASONCEP_SMTP_HOST: ${FASONCEP_SMTP_HOST:-}
+      FASONCEP_SMTP_PORT: ${FASONCEP_SMTP_PORT:-587}
+      FASONCEP_SMTP_SECURITY: ${FASONCEP_SMTP_SECURITY:-starttls}
+      FASONCEP_SMTP_USERNAME: ${FASONCEP_SMTP_USERNAME:-}
+      FASONCEP_SMTP_PASSWORD: ${FASONCEP_SMTP_PASSWORD:-}
+      FASONCEP_MAIL_FROM: ${FASONCEP_MAIL_FROM:-}
+      FASONCEP_MAIL_TO: ${FASONCEP_MAIL_TO:-}
       FASONCEP_DEMO_REQUESTS_ENABLED: ${FASONCEP_DEMO_REQUESTS_ENABLED:-0}
       FASONCEP_SITE_MODE: ${FASONCEP_SITE_MODE:-marketing}
       FASONCEP_OPERATOR_NAME: ${FASONCEP_OPERATOR_NAME:-}
@@ -12,12 +20,13 @@ services:
       FASONCEP_DATA_DIR: /data
       FASONCEP_ALLOWED_HOSTS: ${DOMAIN:?DOMAIN must be set},127.0.0.1,localhost
       FASONCEP_SECURE_COOKIES: "1"
-      # API has no host port and is reachable only inside this dedicated proxy network.
+      # No host API port. The separate egress network permits outbound SMTP.
       FORWARDED_ALLOW_IPS: "*"
     volumes:
       - app_data:/data
     networks:
       - backend
+      - mail_egress
     read_only: true
     tmpfs:
       - /tmp
@@ -46,6 +55,7 @@ services:
       - backend
       - public
 networks:
+  mail_egress:
   backend:
     internal: true
   public:

@@ -26,13 +26,13 @@ const config = {
   accounts: { title: 'Cari & Tahsilat', subtitle: 'Müşteri bakiyelerini ve ödemelerini birlikte izle.', action: 'Tahsilat ekle', icon: Wallet },
 }
 
-export default function Operations({ page, name, navigate, settings, workshopId, active = true }: { workshopId: number; active?: boolean; page: OperationPage; name: string; navigate: (page: OperationPage) => void; settings: () => void }) {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [production, setProduction] = useState<Movement[]>([])
-  const [deliveries, setDeliveries] = useState<Movement[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [dataLoading, setDataLoading] = useState(true)
+export default function Operations({ page, name, navigate, settings, workshopId, active = true, previewData }: { previewData?: OperationData; workshopId: number; active?: boolean; page: OperationPage; name: string; navigate: (page: OperationPage) => void; settings: () => void }) {
+  const [customers, setCustomers] = useState<Customer[]>(previewData?.customers ?? [])
+  const [orders, setOrders] = useState<Order[]>(previewData?.orders ?? [])
+  const [production, setProduction] = useState<Movement[]>(previewData?.production ?? [])
+  const [deliveries, setDeliveries] = useState<Movement[]>(previewData?.deliveries ?? [])
+  const [payments, setPayments] = useState<Payment[]>(previewData?.payments ?? [])
+  const [dataLoading, setDataLoading] = useState(!previewData)
   const [dataError, setDataError] = useState('')
   const [reload, setReload] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -63,6 +63,7 @@ export default function Operations({ page, name, navigate, settings, workshopId,
 
   useEffect(() => {
     if (!active) return
+    if (previewData) { applyData(previewData); setDataLoading(false); return }
     let cancelled = false
     setDataLoading(true); setDataError('')
     api.getOperations<OperationData>(workshopId).then(data => {
@@ -72,7 +73,7 @@ export default function Operations({ page, name, navigate, settings, workshopId,
     }).catch(error => { if (!cancelled) setDataError(error instanceof Error ? error.message : 'Veriler yüklenemedi.') })
       .finally(() => { if (!cancelled) setDataLoading(false) })
     return () => { cancelled = true }
-  }, [workshopId, reload, active])
+  }, [workshopId, reload, active, previewData])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
   const [modal, setModal] = useState<Exclude<OperationPage, 'overview'> | null>(null)
@@ -89,10 +90,12 @@ export default function Operations({ page, name, navigate, settings, workshopId,
   }, [deleting, active])
   useEffect(() => { setDeleting(null) }, [active, page])
   function requestDeletion(kind: DeleteKind, id: string, label: string) {
+    if (previewData) { setNotice('Örnek demoda kayıtlar değiştirilemez.'); return }
     deleteTrigger.current = document.activeElement as HTMLElement
     setDeleteError(''); setDeleting({kind, id, label})
   }
   async function deleteRecord() {
+    if (previewData) return
     if (!deleting || busy.current || deletionBlockReason(deleting, { customers, orders, production, deliveries, payments })) return
     busy.current = true; setSaving(true); setDeleteError('')
     try {
@@ -133,6 +136,7 @@ export default function Operations({ page, name, navigate, settings, workshopId,
   const total = orders.reduce((a, o) => a + lineCents(o.quantity, o.price), 0) / 100
   const collected = payments.reduce((a, p) => a + toCents(p.amount), 0) / 100
   function open(kind: Exclude<OperationPage, 'overview'>, record: Customer | Order | Movement | Payment | null = null, context: {order?:string;customer?:string} = {}) {
+    if (previewData) { setNotice('Bu örnek demo salt okunurdur. Kayıt ekleme ve düzenleme demo görüşmesinde gösterilir.'); return }
     if (busy.current) return
     setError(''); setEditRecord(record); setPrefill(context); setExtrasOpen(false); setPhoto(record && 'photo' in record ? record.photo : null)
     setVariants(record && 'variants' in record ? record.variants.map(item => ({...item})) : [])
@@ -151,6 +155,7 @@ export default function Operations({ page, name, navigate, settings, workshopId,
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
+    if (previewData) { event.preventDefault(); return }
     event.preventDefault()
     if (busy.current || photoBusy || !modal) return
     let payload: object | null = null
@@ -242,7 +247,7 @@ export default function Operations({ page, name, navigate, settings, workshopId,
           {label:'Teslime hazır',count:orders.filter(o => produced(o.id) === o.quantity && delivered(o.id) < o.quantity).length,icon:Truck,page:'deliveries' as const},
           {label:'Tamamlanan',count:orders.filter(o => delivered(o.id) === o.quantity).length,icon:PackageCheck,page:'orders' as const},
         ].map(stage => <button key={stage.label} className="pipeline-stage" onClick={() => navigate(stage.page)}><stage.icon size={19}/><strong>{number(stage.count)}</strong><span>{stage.label}</span></button>)}</div></section>
-        <section className="panel deadlines-panel"><div className="panel-title"><h2>Yaklaşan teslimler</h2><Truck size={18}/></div>{orders.filter(o => delivered(o.id) < o.quantity).length ? <div className="deadline-list">{orders.filter(o => delivered(o.id) < o.quantity).sort((a,b) => a.due.localeCompare(b.due)).slice(0,3).map(o => <button key={o.id} className="deadline-item" onClick={() => setDetailId(o.id)}><span className="deadline-date">{new Date(`${o.due}T12:00:00`).getDate()}<small>{new Date(`${o.due}T12:00:00`).toLocaleDateString('tr-TR',{month:'short'})}</small></span><span><button className="order-link" onClick={() => setDetailId(o.id)}>{o.model}</button><small>{customerName(o.customer)} · {number(o.quantity-delivered(o.id))} adet</small></span><ArrowRight size={15}/></button>)}</div> : <div className="deadline-empty"><Truck size={24}/><p>Takviminde bekleyen teslimat yok.</p><button className="text-button" onClick={() => open('orders')}>Sipariş planla <ArrowRight size={14}/></button></div>}</section>
+        <section className="panel deadlines-panel"><div className="panel-title"><h2>Yaklaşan teslimler</h2><Truck size={18}/></div>{orders.filter(o => delivered(o.id) < o.quantity).length ? <div className="deadline-list">{orders.filter(o => delivered(o.id) < o.quantity).sort((a,b) => a.due.localeCompare(b.due)).slice(0,3).map(o => <button key={o.id} className="deadline-item" onClick={() => setDetailId(o.id)}><span className="deadline-date">{new Date(`${o.due}T12:00:00`).getDate()}<small>{new Date(`${o.due}T12:00:00`).toLocaleDateString('tr-TR',{month:'short'})}</small></span><span><strong className="order-link">{o.model}</strong><small>{customerName(o.customer)} · {number(o.quantity-delivered(o.id))} adet</small></span><ArrowRight size={15}/></button>)}</div> : <div className="deadline-empty"><Truck size={24}/><p>Takviminde bekleyen teslimat yok.</p><button className="text-button" onClick={() => open('orders')}>Sipariş planla <ArrowRight size={14}/></button></div>}</section>
       </div>
       <div className="overview-bottom"><div><span className="eyebrow">TAHSİLAT DURUMU</span><h2>{money(collected)}</h2><p>{money(total)} toplam sipariş tutarından tahsil edildi.</p><div className="progress-track"><span style={{ width: `${total ? collected / total * 100 : 0}%` }}/></div></div><button className="button secondary" onClick={() => navigate('accounts')}>Cari hesapları incele <ArrowRight size={16}/></button></div>
     </> : <section className="panel data-panel"><div className="table-toolbar"><div className="list-title"><Icon size={19}/><h2>{page === 'accounts' ? 'Müşteri bakiyeleri' : page === 'production' || page === 'deliveries' ? 'Hareket geçmişi' : `${current?.title} listesi`}</h2></div><div className="table-controls"><label className="search-box"><Search size={17}/><input aria-label="Listede ara" placeholder="Listede ara…" value={query} onChange={e => setQuery(e.target.value)}/></label>{page === 'orders' && <select aria-label="Sipariş durumu" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tüm durumlar</option><option value="active">Aktif siparişler</option><option value="done">Teslim edilenler</option></select>}</div></div>

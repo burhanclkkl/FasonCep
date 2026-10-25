@@ -1,6 +1,8 @@
-"""Lead collection only. No accounts, passwords or email delivery are created."""
+"""Lead collection only. No accounts or passwords are created. Notifications use a durable outbox."""
 import os
 import re
+from email.utils import make_msgid
+from .mail_notifications import initialize_outbox
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .database import connection
@@ -28,6 +30,7 @@ def initialize_requests():
             id INTEGER PRIMARY KEY, name TEXT NOT NULL, workshop_name TEXT NOT NULL,
             email TEXT NOT NULL, notice_version TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')))''')
+        initialize_outbox(db)
         purge_requests(db)
 
 
@@ -52,7 +55,7 @@ class DemoRequest(BaseModel):
     @field_validator('email')
     @classmethod
     def valid_email(cls, value):
-        if not re.fullmatch(r'[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+', value):
+        if any(ord(char)<32 or ord(char)==127 for char in value) or not re.fullmatch(r'[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+', value):
             raise ValueError('Geçerli bir e-posta adresi girin.')
         return value.casefold()
 
@@ -75,6 +78,8 @@ def request_demo(payload: DemoRequest, request: Request):
             purge_requests(db)
             exists = db.execute("SELECT 1 FROM demo_requests WHERE email=? AND created_at >= datetime('now','-1 day')", (payload.email,)).fetchone()
             if not exists:
-                db.execute('INSERT INTO demo_requests(name,workshop_name,email,notice_version) VALUES (?,?,?,?)',
+                cursor = db.execute('INSERT INTO demo_requests(name,workshop_name,email,notice_version) VALUES (?,?,?,?)',
                            (payload.name,payload.workshop_name,payload.email,'demo-v1'))
+                db.execute('INSERT INTO demo_mail_outbox(request_id,message_id) VALUES (?,?)',
+                           (cursor.lastrowid,make_msgid()))
     return {'message': 'Talebin alındı. Demo için seninle iletişime geçeceğiz.'}

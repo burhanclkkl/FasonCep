@@ -14,7 +14,7 @@ if not (frontend/'index.html').is_file():
 sys.path.insert(0, str(root/'apps/fasoncep/backend'))
 
 with tempfile.TemporaryDirectory(prefix='fasoncep-seo-') as temporary:
-    os.environ.update(FASONCEP_ENV='production', FASONCEP_SITE_MODE='marketing', FASONCEP_DEMO_REQUESTS_ENABLED='0', FASONCEP_DATA_DIR=temporary,
+    os.environ.update(FASONCEP_ENV='production', FASONCEP_SITE_MODE='marketing', FASONCEP_MAIL_ENABLED='0', FASONCEP_DEMO_REQUESTS_ENABLED='0', FASONCEP_DATA_DIR=temporary,
                       FASONCEP_FRONTEND_DIR=str(frontend),
                       FASONCEP_PUBLIC_URL='https://fason.example',
                       FASONCEP_ALLOWED_HOSTS='fason.example')
