@@ -1,3 +1,4 @@
+import { compatibleApi } from './api-health.mjs'
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -20,16 +21,7 @@ process.on('SIGINT', () => stop())
 process.on('SIGTERM', () => stop())
 async function healthy() {
   try {
-    const response = await fetch(`${apiUrl}/api/health`, { signal: AbortSignal.timeout(800) })
-    const body = await response.json()
-    if (!response.ok || body.status !== 'ok' || body.mode !== 'local') return false
-    // Detect an outdated API instead of opening a broken frontend.
-    const schema = await fetch(`${apiUrl}/api/openapi.json`, { signal: AbortSignal.timeout(800) })
-    const spec = await schema.json()
-    if (!spec.paths?.['/api/workshops']?.post || !spec.paths?.['/api/workshops/{workshop_id}']?.put || !spec.paths?.['/api/workshops/{workshop_id}/operations']?.get || !spec.paths?.['/api/workshops/{workshop_id}/operations/{kind}']?.post || !spec.paths?.['/api/workshops/{workshop_id}/export.xlsx']?.get || !spec.paths?.['/api/auth/register']?.post) {
-      throw new Error('OUTDATED_API')
-    }
-    return true
+    return await compatibleApi(apiUrl)
   } catch (error) {
     if (error.message === 'OUTDATED_API') throw new Error('API eski sürümde. Açık backend terminalinde Ctrl+C ile durdurun, sonra npm run dev komutunu tekrar çalıştırın.')
     return false
