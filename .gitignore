@@ -1,0 +1,37 @@
+# Runtime data and backups (never version business/account/session data)
+**/data/
+**/backups/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.bak
+*.backup
+
+# Secrets and machine configuration; sanitized examples are intentionally tracked
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# Dependencies, generated output and caches
+.venv/
+.venv*/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+.DS_Store
+*.xlsx.inspect.ndjson
+
+# Temporary landing prerender bundle
+.prerender.mjs

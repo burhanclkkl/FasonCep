@@ -1,0 +1,51 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      FASONCEP_ENV: production
+      FASONCEP_PUBLIC_URL: https://${DOMAIN:?DOMAIN must be set}
+      FASONCEP_DATA_DIR: /data
+      FASONCEP_ALLOWED_HOSTS: ${DOMAIN:?DOMAIN must be set},127.0.0.1,localhost
+      FASONCEP_SECURE_COOKIES: "1"
+      # API has no host port and is reachable only inside this dedicated proxy network.
+      FORWARDED_ALLOW_IPS: "*"
+    volumes:
+      - app_data:/data
+    networks:
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - backend
+      - public
+networks:
+  backend:
+    internal: true
+  public:
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:
