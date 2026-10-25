@@ -14,7 +14,7 @@ if not (frontend/'index.html').is_file():
 sys.path.insert(0, str(root/'apps/fasoncep/backend'))
 
 with tempfile.TemporaryDirectory(prefix='fasoncep-seo-') as temporary:
-    os.environ.update(FASONCEP_ENV='production', FASONCEP_DATA_DIR=temporary,
+    os.environ.update(FASONCEP_ENV='production', FASONCEP_SITE_MODE='marketing', FASONCEP_DEMO_REQUESTS_ENABLED='0', FASONCEP_DATA_DIR=temporary,
                       FASONCEP_FRONTEND_DIR=str(frontend),
                       FASONCEP_PUBLIC_URL='https://fason.example',
                       FASONCEP_ALLOWED_HOSTS='fason.example')
@@ -32,18 +32,21 @@ with tempfile.TemporaryDirectory(prefix='fasoncep-seo-') as temporary:
         assert 'rel="canonical" href="https://fason.example/"' in page
         schema = json.loads(re.search(r'type="application/ld\+json">(.*?)</script>', page).group(1))
         assert len(schema['@graph']) == 4
-        for path in ['/giris', '/kayit', '/uygulama']:
+        for path in ['/demo', '/demo-talebi', '/aydinlatma']:
             private = client.get(path)
             assert private.status_code == 200
             assert private.headers['X-Robots-Tag'] == 'noindex, nofollow'
             assert 'FasonCep, fason ve dikim atölyeleri' not in private.text
             assert 'application/ld+json' not in private.text
-        assert client.get('/api/workshops').status_code == 401
+        assert client.get('/api/workshops').status_code == 404
         assert client.get('/api/workshops').headers['X-Robots-Tag'] == 'noindex, nofollow'
         assert client.get('/olmayan-sayfa').status_code == 404
         assert 'Sitemap: https://fason.example/sitemap.xml' in client.get('/robots.txt').text
         sitemap = ET.fromstring(client.get('/sitemap.xml').content)
         assert [node.text for node in sitemap.findall('.//{*}loc')] == ['https://fason.example/']
+        assert client.post('/api/auth/register',json={}).status_code == 404
+        assert client.get('/kayit',follow_redirects=False).headers['location'] == '/demo-talebi'
+        assert client.get('/api/public-config').json()['accepting_requests'] is False
         png = client.get('/social-card.png')
         assert png.status_code == 200 and png.content.startswith(b'\x89PNG\r\n\x1a\n')
         assert int.from_bytes(png.content[16:20], 'big') == 1200

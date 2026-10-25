@@ -1,3 +1,4 @@
+import PublicSite from './PublicSite'
 import { updatePageMeta } from './siteMeta'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -370,7 +371,7 @@ function WorkshopApp({user,onLogout}:{user:User;onLogout:()=>void}) {
 }
 
 
-export default function App() {
+export function ApplicationApp() {
   const [path,setPath]=useState(window.location.pathname)
   const [user,setUser]=useState<User|null>(null)
   const [checking,setChecking]=useState(true)
@@ -401,5 +402,7 @@ export default function App() {
   if(checking && path!=='/')return <div className="loading-screen"><div className="spinner"/><strong>Hesabın hazırlanıyor…</strong></div>
   if(path==='/uygulama' && user)return <>{logoutError&&<div className="auth-session-error" role="alert">{logoutError}<button onClick={()=>void logout()}>Tekrar dene</button></div>}<WorkshopApp key={user.id} user={user} onLogout={()=>void logout()}/></>
   if(path==='/giris'||path==='/kayit')return <AuthPage key={path} mode={path==='/kayit'?'register':'login'} navigate={navigate} onSuccess={signedIn}/>
-  return <Landing navigate={navigate} signedIn={!!user}/>
+  return <Landing navigate={navigate} signedIn={!!user} marketing={false}/>
 }
+
+export default function App() { return <PublicSite application={<ApplicationApp/>}/> }

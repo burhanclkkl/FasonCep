@@ -40,3 +40,5 @@ Sıralama veya yapay zekâ yanıtında alıntılanma garanti edilemez. Bu çalı
 ## Otomatik doğrulama
 
 Frontend derlemesinden sonra proje kökünde `apps/fasoncep/backend/.venv/bin/python scripts/check_public_site.py` çalıştırılabilir. Geçici veritabanıyla üretim HTML çıktısını, canonical/sitemap tutarlılığını, görsel boyutlarını ve özel sayfaların indeks dışı kalmasını sınar. CI da bu kontrolü derlemeden sonra çalıştırır.
+
+İlk yayın artık `marketing` modudur. Eski giriş/kayıt/uygulama adresleri demo talebi veya örnek demoya yönlenir. Demo ve talep sayfaları noindex kalır; sitemap yalnızca ana sayfayı içerir. Ayrıntılar: [PUBLIC-LAUNCH.md](PUBLIC-LAUNCH.md).

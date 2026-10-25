@@ -4,6 +4,10 @@ services:
     restart: unless-stopped
     environment:
       FASONCEP_ENV: production
+      FASONCEP_DEMO_REQUESTS_ENABLED: ${FASONCEP_DEMO_REQUESTS_ENABLED:-0}
+      FASONCEP_SITE_MODE: ${FASONCEP_SITE_MODE:-marketing}
+      FASONCEP_OPERATOR_NAME: ${FASONCEP_OPERATOR_NAME:-}
+      FASONCEP_CONTACT_EMAIL: ${FASONCEP_CONTACT_EMAIL:-}
       FASONCEP_PUBLIC_URL: https://${DOMAIN:?DOMAIN must be set}
       FASONCEP_DATA_DIR: /data
       FASONCEP_ALLOWED_HOSTS: ${DOMAIN:?DOMAIN must be set},127.0.0.1,localhost

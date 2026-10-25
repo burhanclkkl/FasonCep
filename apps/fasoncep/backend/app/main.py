@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import asyncio
+from contextlib import suppress
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from .settings import is_production, allowed_hosts, frontend_directory
+from .settings import is_production, allowed_hosts, frontend_directory, site_mode
 from .seo import router as seo_router, render_page, public_url
+from .demo_requests import router as demo_router, initialize_requests, cleanup_requests
 from fastapi.exceptions import RequestValidationError
 from urllib.parse import urlsplit
 from .auth import current_user, assert_owner, router as auth_router
@@ -20,7 +23,18 @@ from .schemas import WorkshopInput, WorkshopResponse
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize_db()
-    yield
+    initialize_requests()
+    async def purge_loop():
+        while True:
+            await asyncio.sleep(3600)
+            await asyncio.to_thread(cleanup_requests)
+    cleanup_task = asyncio.create_task(purge_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
 
 
 app = FastAPI(
@@ -104,6 +118,8 @@ app.include_router(auth_router)
 
 @app.middleware('http')
 async def security_headers(request: Request, call_next):
+    if site_mode() == 'marketing' and request.url.path.startswith('/api/') and request.url.path not in ('/api/health','/api/public-config','/api/demo-requests'):
+        return JSONResponse({'detail':'Bu sayfa kullanıma açık değil.'}, status_code=404, headers={'X-Robots-Tag':'noindex, nofollow','Cache-Control':'no-store'})
     if request.method in ('POST','PUT','PATCH','DELETE'):
         origin = request.headers.get('origin')
         if origin:
@@ -137,7 +153,9 @@ async def validation_error(request: Request, exc: RequestValidationError):
 # Only explicit SPA routes are served. Unknown /api routes remain real JSON 404s.
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
 public_url()  # Reject an invalid configured canonical origin at startup.
+site_mode()
 app.include_router(seo_router)
+app.include_router(demo_router)
 frontend=frontend_directory()
 if is_production() and not (frontend/'index.html').is_file():
     raise RuntimeError('Üretim frontend derlemesi bulunamadı; önce npm run build çalıştırın.')
@@ -147,5 +165,11 @@ if (frontend/'index.html').is_file():
     @app.get('/giris',include_in_schema=False)
     @app.get('/kayit',include_in_schema=False)
     @app.get('/uygulama',include_in_schema=False)
+    @app.get('/demo',include_in_schema=False)
+    @app.get('/demo-talebi',include_in_schema=False)
+    @app.get('/aydinlatma',include_in_schema=False)
     def frontend_page(request: Request):
+        if site_mode() == 'marketing' and request.url.path in ('/giris','/kayit','/uygulama'):
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse('/demo' if request.url.path == '/uygulama' else '/demo-talebi', status_code=307, headers={'X-Robots-Tag':'noindex, nofollow'})
         return render_page(request.url.path)

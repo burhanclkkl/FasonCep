@@ -8,6 +8,7 @@ from app.seo import public_url, public_head, render_page, robots, sitemap
 @pytest.fixture
 def published(monkeypatch, tmp_path):
     monkeypatch.setenv('FASONCEP_ENV', 'production')
+    monkeypatch.setenv('FASONCEP_SITE_MODE', 'marketing')
     monkeypatch.setenv('FASONCEP_ALLOWED_HOSTS', 'fason.example,127.0.0.1')
     monkeypatch.setenv('FASONCEP_PUBLIC_URL', 'https://fason.example')
     monkeypatch.setenv('FASONCEP_FRONTEND_DIR', str(tmp_path))

@@ -27,3 +27,10 @@ def secure_cookies(request):
 
 def frontend_directory():
     return Path(os.getenv('FASONCEP_FRONTEND_DIR',str(Path(__file__).resolve().parents[2]/'frontend'/'dist')))
+
+
+def site_mode():
+    value = os.getenv('FASONCEP_SITE_MODE', 'marketing')
+    if value not in ('marketing', 'application'):
+        raise RuntimeError('FASONCEP_SITE_MODE marketing veya application olmalı.')
+    return value

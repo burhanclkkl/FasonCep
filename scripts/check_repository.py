@@ -1,4 +1,4 @@
-"""Check Git-tracked source (or a clean source tree before git init) for leaks."""
+"""Check tracked and untracked source (or a clean source tree before git init) for leaks."""
 from pathlib import Path
 import os
 import re
@@ -8,7 +8,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 SKIP={'node_modules','.git','.venv','.venv312','__pycache__','.pytest_cache','dist','data','backups'}
 try:
-    result=subprocess.run(['git','ls-files','-z'],cwd=ROOT,capture_output=True,check=True)
+    result=subprocess.run(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT,capture_output=True,check=True)
     files=[ROOT/name for name in result.stdout.decode().split('\0') if name]
 except (FileNotFoundError,subprocess.CalledProcessError):
     files=[]

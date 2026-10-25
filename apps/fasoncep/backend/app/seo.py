@@ -67,6 +67,12 @@ def public_head():
 def render_page(path):
     markup = (frontend_directory()/'index.html').read_text(encoding='utf-8')
     markup = re.sub(r'<meta name="robots"[^>]*>', '', markup)
+    from .demo_requests import public_config
+    config = public_config()
+    config_json = json.dumps(config, ensure_ascii=False).replace("<", "\\u003c")
+    markup = markup.replace("</head>", f'<script id="public-config" type="application/json">{config_json}</script></head>')
+    if config["mode"] == "application":
+        markup = re.sub(r'<!-- LANDING_START -->.*?<!-- LANDING_END -->', '', markup, flags=re.S)
     home = path == '/'
     policy = 'index, follow, max-image-preview:large' if indexable() else 'noindex, nofollow'
     metadata = f'<meta name="robots" data-public-policy="{policy}" content="{policy if home else "noindex, nofollow"}">'
@@ -74,9 +80,10 @@ def render_page(path):
         metadata += public_head()
     else:
         markup = re.sub(r'<!-- LANDING_START -->.*?<!-- LANDING_END -->', '', markup, flags=re.S)
-        title = {'/giris':'Giriş yap · FasonCep', '/kayit':'Hesap oluştur · FasonCep', '/uygulama':'Çalışma alanı · FasonCep'}[path]
+        title = {'/giris':'Giriş yap · FasonCep', '/kayit':'Hesap oluştur · FasonCep', '/uygulama':'Çalışma alanı · FasonCep', '/demo':'Örnek demo · FasonCep', '/demo-talebi':'Demo talebi · FasonCep', '/aydinlatma':'Aydınlatma · FasonCep'}[path]
         markup = re.sub(r'<title>.*?</title>', f'<title>{title}</title>', markup, flags=re.S)
-        markup = re.sub(r'<meta name="description"[^>]*>', '<meta name="description" content="FasonCep hesabını yönet.">', markup)
+        description = 'FasonCep’i örnek verilerle incele ve demo talebi hakkında bilgi al.' if path in ('/demo','/demo-talebi','/aydinlatma') else 'FasonCep hesabını yönet.'
+        markup = re.sub(r'<meta name="description"[^>]*>', f'<meta name="description" content="{description}">', markup)
     markup = markup.replace('</head>', metadata+'\n</head>')
     return HTMLResponse(markup, headers={'Cache-Control':'no-cache', **({} if home and indexable() else {'X-Robots-Tag':'noindex, nofollow'})})
 

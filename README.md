@@ -2,6 +2,8 @@
 
 Fason atölyeleri için sade bir dijital iş defteri: müşteriler, siparişler, üretim, kısmi teslimatlar ve tahsilatlar tek çalışma alanında.
 
+İlk yayın varsayılan olarak **tanıtım modundadır**: landing, kayıt oluşturmayan örnek demo ve gönderimi kapalı demo talep formu. Gerçek uygulama API’leri erişime kapalıdır. Yapılandırma ve kapsam: [docs/PUBLIC-LAUNCH.md](docs/PUBLIC-LAUNCH.md).
+
 ## Mevcut özellikler
 
 - E-posta/şifre kaydı, Argon2id hash ve çerez tabanlı oturum.
